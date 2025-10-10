@@ -1,222 +1,281 @@
 "use client";
+
+import { apiGet } from "@/lib/api";
 import { useEffect, useState } from "react";
 
 export default function AdminBookings() {
+  const [bookings, setBookings] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  // Pagination
+  const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(10);
+  const [total, setTotal] = useState(0);
+
+  // 🧩 Filter state
   const [filters, setFilters] = useState({
     search: "",
-    court: "all",
+    court: "",
     date: "",
-    status: "all",
+    status: "",
   });
-  const [bookings, setBookings] = useState([]);
-  const [loading, setLoading] = useState(false);
 
-  // Fetch data dari BE
-  const fetchBookings = async () => {
+  // 📦 Grouping helper
+  function groupByOrderId(data) {
+    return Object.values(
+      data.reduce((acc, b) => {
+        if (!acc[b.orderId]) {
+          acc[b.orderId] = {
+            orderId: b.orderId,
+            name: b.name,
+            whatsapp: b.whatsapp,
+            email: b.email,
+            status: b.status,
+            dateISO: b.dateISO,
+            court: b.court?.name,
+            startAt: new Date(b.startAt),
+            endAt: new Date(b.endAt),
+            totalSlots: 1,
+            amountPerSlot: b.amount,
+            grandTotal: b.grandTotal,
+          };
+        } else {
+          const current = acc[b.orderId];
+          if (new Date(b.startAt) < current.startAt)
+            current.startAt = new Date(b.startAt);
+          if (new Date(b.endAt) > current.endAt)
+            current.endAt = new Date(b.endAt);
+          current.totalSlots += 1;
+        }
+        return acc;
+      }, {})
+    );
+  }
+
+  // 🔁 Fetch bookings with pagination + filters
+  useEffect(() => {
+    async function load() {
+      try {
+        setLoading(true);
+
+        // Build query string dynamically
+        const params = new URLSearchParams({
+          page: page.toString(),
+          limit: limit.toString(),
+          ...(filters.search && { search: filters.search }),
+          ...(filters.court && { court: filters.court }),
+          ...(filters.date && { date: filters.date }),
+          ...(filters.status && { status: filters.status }),
+        });
+
+        const res = await apiGet(`/admin/bookings?${params.toString()}`, {
+          auth: true,
+        });
+
+        const grouped = groupByOrderId(res.data);
+        setBookings(grouped);
+        setTotal(res.total);
+      } catch (err) {
+        console.error("Error fetch bookings:", err);
+        setError(err.message);
+      } finally {
+        setLoading(false);
+      }
+    }
+    load();
+  }, [page, limit]); // reload on pagination change
+
+  const handleFilter = async () => {
+    setPage(1);
     try {
       setLoading(true);
-
-      const token = localStorage.getItem("adminToken"); // simpan token JWT di login admin
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/admin/bookings`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
+      const params = new URLSearchParams({
+        page: "1",
+        limit: limit.toString(),
+        ...(filters.search && { search: filters.search }),
+        ...(filters.court && { court: filters.court }),
+        ...(filters.date && { date: filters.date }),
+        ...(filters.status && { status: filters.status }),
       });
-
-      if (!res.ok) throw new Error("Failed to fetch bookings");
-      const data = await res.json();
-
-      // Filtering di sisi FE (atau bisa tambahkan query param ke BE nanti)
-      let filtered = data;
-      if (filters.search) {
-        filtered = filtered.filter(
-          (b) =>
-            b.name?.toLowerCase().includes(filters.search.toLowerCase()) ||
-            b.whatsapp?.includes(filters.search) ||
-            b.email?.toLowerCase().includes(filters.search.toLowerCase())
-        );
-      }
-      if (filters.court !== "all") {
-        filtered = filtered.filter((b) => b.court?.id === filters.court);
-      }
-      if (filters.status !== "all") {
-        filtered = filtered.filter(
-          (b) => b.status.toLowerCase() === filters.status.toLowerCase()
-        );
-      }
-      if (filters.date) {
-        filtered = filtered.filter((b) => b.dateISO === filters.date);
-      }
-
-      setBookings(filtered);
+      const res = await apiGet(`/admin/bookings?${params.toString()}`, {
+        auth: true,
+      });
+      const grouped = groupByOrderId(res.data);
+      setBookings(grouped);
+      setTotal(res.total);
     } catch (err) {
-      console.error(err);
+      console.error("Error filtering bookings:", err);
+      setError(err.message);
     } finally {
       setLoading(false);
     }
   };
 
-  useEffect(() => {
-    fetchBookings();
-  }, [filters]);
-
-  const statusColor = (status) => {
-    switch (status) {
-      case "PAID":
-        return "bg-green-100 text-green-700";
-      case "PENDING":
-        return "bg-yellow-100 text-yellow-700";
-      case "CANCELLED":
-        return "bg-red-100 text-red-700";
-      case "EXPIRED":
-        return "bg-gray-100 text-gray-700";
-      case "HOLD":
-        return "bg-blue-100 text-blue-700";
-      default:
-        return "bg-gray-100 text-gray-700";
-    }
-  };
+  if (loading) return <p>Loading bookings...</p>;
+  if (error) return <p className="text-red-500">Error: {error}</p>;
 
   return (
-    <div className="p-6 space-y-6">
-      {/* Title */}
-      <div>
-        <h1 className="text-2xl font-bold text-slate-800">Bookings Management</h1>
-        <p className="text-slate-500">View and manage all court bookings</p>
-      </div>
+    <div className="p-6">
+      <h1 className="text-xl text-white font-bold mb-4">Bookings Management</h1>
 
-      {/* Filter Card */}
-      <div className="bg-white border border-slate-200 rounded-xl shadow-sm p-4">
-        <div className="grid grid-cols-1 md:grid-cols-5 gap-4 items-center">
-          {/* Search */}
-          <div className="md:col-span-2">
-            <label className="block text-sm font-medium text-slate-700 mb-1">
-              Search Bookings
-            </label>
-            <input
-              type="text"
-              placeholder="Search by customer name, phone, or email..."
-              value={filters.search}
-              onChange={(e) =>
-                setFilters({ ...filters, search: e.target.value })
-              }
-              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500"
-            />
-          </div>
-
-          {/* Court */}
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">
-              Court
-            </label>
-            <select
-              value={filters.court}
-              onChange={(e) =>
-                setFilters({ ...filters, court: e.target.value })
-              }
-              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500"
-            >
-              <option value="all">All Courts</option>
-              {/* TODO: bisa fetch daftar court dari BE */}
-              <option value="court1">Court 1</option>
-              <option value="court2">Court 2</option>
-            </select>
-          </div>
-
-          {/* Date */}
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">
-              Date Range
-            </label>
-            <input
-              type="date"
-              value={filters.date}
-              onChange={(e) =>
-                setFilters({ ...filters, date: e.target.value })
-              }
-              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500"
-            />
-          </div>
-
-          {/* Status */}
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">
-              Status
-            </label>
-            <select
-              value={filters.status}
-              onChange={(e) =>
-                setFilters({ ...filters, status: e.target.value })
-              }
-              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500"
-            >
-              <option value="all">All Status</option>
-              <option value="PAID">Paid</option>
-              <option value="PENDING">Pending</option>
-              <option value="CANCELLED">Cancelled</option>
-              <option value="EXPIRED">Expired</option>
-            </select>
-          </div>
+      {/* 🔍 Filter Bar */}
+      <div className="bg-white shadow rounded-lg p-4 mb-6">
+        <div className="flex flex-wrap gap-3">
+          <input
+            type="text"
+            placeholder="Search by customer, phone, email..."
+            value={filters.search}
+            onChange={(e) =>
+              setFilters((f) => ({ ...f, search: e.target.value }))
+            }
+            className="flex-1 min-w-[200px] rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+          />
+          <select
+            value={filters.court}
+            onChange={(e) =>
+              setFilters((f) => ({ ...f, court: e.target.value }))
+            }
+            className="rounded-lg border border-slate-300 px-3 py-2 text-sm"
+          >
+            <option value="">All Courts</option>
+            <option value="Bandeja">Bandeja</option>
+            <option value="Smash">Smash</option>
+            <option value="Volley">Volley</option>
+          </select>
+          <input
+            type="date"
+            value={filters.date}
+            onChange={(e) =>
+              setFilters((f) => ({ ...f, date: e.target.value }))
+            }
+            className="rounded-lg border border-slate-300 px-3 py-2 text-sm"
+          />
+          <select
+            value={filters.status}
+            onChange={(e) =>
+              setFilters((f) => ({ ...f, status: e.target.value }))
+            }
+            className="rounded-lg border border-slate-300 px-3 py-2 text-sm"
+          >
+            <option value="">All Status</option>
+            <option value="PAID">Paid</option>
+            <option value="PENDING">Pending</option>
+            <option value="CANCELLED">Cancelled</option>
+          </select>
+          <button
+            onClick={handleFilter}
+            className="bg-blue-600 text-white px-4 py-2 rounded-lg"
+          >
+            Filter
+          </button>
         </div>
       </div>
 
-      {/* Booking Table */}
-      <div className="bg-white border border-slate-200 rounded-xl shadow-sm">
-        {loading ? (
-          <p className="p-4 text-slate-500">Loading...</p>
-        ) : (
-          <table className="w-full text-sm border-collapse">
-            <thead className="bg-slate-50 text-slate-700 text-left">
-              <tr>
-                <th className="px-4 py-3 border-b">Customer</th>
-                <th className="px-4 py-3 border-b">Court</th>
-                <th className="px-4 py-3 border-b">Date & Time</th>
-                <th className="px-4 py-3 border-b">Amount</th>
-                <th className="px-4 py-3 border-b">Status</th>
+      {/* 📊 Table */}
+      <div className="bg-white shadow rounded-lg overflow-x-auto">
+        <table className="min-w-full border-collapse">
+          <thead className="bg-slate-100 text-left text-sm font-semibold text-slate-600">
+            <tr>
+              <th className="px-4 py-2">Order ID</th>
+              <th className="px-4 py-2">Customer</th>
+              <th className="px-4 py-2">Court</th>
+              <th className="px-4 py-2">Date & Time</th>
+              <th className="px-4 py-2">Total Slots</th>
+              <th className="px-4 py-2">Amount / Slot</th>
+              <th className="px-4 py-2">Grand Total</th>
+              <th className="px-4 py-2">Status</th>
+            </tr>
+          </thead>
+          <tbody className="text-sm text-slate-700">
+            {bookings.map((b) => (
+              <tr key={b.orderId} className="border-t hover:bg-slate-50">
+                <td className="px-4 py-2 text-slate-600 font-mono text-xs">
+                  {b.orderId}
+                </td>
+                <td className="px-4 py-2">
+                  <div className="font-medium">{b.name}</div>
+                  <div className="text-xs text-slate-500">{b.whatsapp}</div>
+                  <div className="text-xs text-slate-400">{b.email}</div>
+                </td>
+                <td className="px-4 py-2">{b.court}</td>
+                <td className="px-4 py-2">
+                  {new Date(b.dateISO).toLocaleDateString("id-ID", {
+                    weekday: "short",
+                    day: "2-digit",
+                    month: "short",
+                    year: "numeric",
+                  })}
+                  <br />
+                  {b.startAt.toLocaleTimeString("id-ID", {
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  })}{" "}
+                  -{" "}
+                  {b.endAt.toLocaleTimeString("id-ID", {
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  })}
+                </td>
+                <td className="px-4 py-2 text-center">{b.totalSlots}</td>
+                <td className="px-4 py-2">
+                  Rp {b.amountPerSlot.toLocaleString("id-ID")}
+                </td>
+                <td className="px-4 py-2 font-medium text-slate-700">
+                  Rp {b.grandTotal.toLocaleString("id-ID")}
+                </td>
+                <td className="px-4 py-2">
+                  <span
+                    className={`px-2 py-1 rounded-full text-xs font-medium ${
+                      b.status === "PAID"
+                        ? "bg-green-100 text-green-700"
+                        : b.status === "PENDING"
+                        ? "bg-yellow-100 text-yellow-700"
+                        : b.status === "CANCELLED"
+                        ? "bg-red-100 text-red-700"
+                        : "bg-gray-100 text-gray-700"
+                    }`}
+                  >
+                    {b.status}
+                  </span>
+                </td>
               </tr>
-            </thead>
-            <tbody>
-              {bookings.map((b) => (
-                <tr key={b.id} className="border-b">
-                  <td className="px-4 py-3">
-                    <div className="font-medium">{b.name}</div>
-                    <div className="text-xs text-slate-500">{b.whatsapp}</div>
-                  </td>
-                  <td className="px-4 py-3">{b.court?.name}</td>
-                  <td className="px-4 py-3">
-                    {b.dateISO} <br />
-                    {new Date(b.startAt).toLocaleTimeString([], {
-                      hour: "2-digit",
-                      minute: "2-digit",
-                    })}{" "}
-                    -{" "}
-                    {new Date(b.endAt).toLocaleTimeString([], {
-                      hour: "2-digit",
-                      minute: "2-digit",
-                    })}
-                  </td>
-                  <td className="px-4 py-3">Rp {b.grandTotal.toLocaleString()}</td>
-                  <td className="px-4 py-3">
-                    <span
-                      className={`px-2 py-1 rounded-lg text-xs font-medium ${statusColor(
-                        b.status
-                      )}`}
-                    >
-                      {b.status}
-                    </span>
-                  </td>
-                </tr>
-              ))}
-              {bookings.length === 0 && !loading && (
-                <tr>
-                  <td colSpan="5" className="p-4 text-center text-slate-500">
-                    No bookings found
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        )}
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      {/* 📄 Pagination Controls */}
+      <div className="flex justify-end items-center gap-2 mt-4">
+        <button
+          onClick={() => setPage((p) => Math.max(1, p - 1))}
+          disabled={page === 1}
+          className="px-3 py-1 border rounded disabled:opacity-50"
+        >
+          Prev
+        </button>
+        <span className="text-sm text-slate-600">
+          Page {page} of {Math.ceil(total / limit) || 1}
+        </span>
+        <button
+          onClick={() => setPage((p) => (p * limit < total ? p + 1 : p))}
+          disabled={page * limit >= total}
+          className="px-3 py-1 border rounded disabled:opacity-50"
+        >
+          Next
+        </button>
+        <select
+          value={limit}
+          onChange={(e) => {
+            setLimit(Number(e.target.value));
+            setPage(1);
+          }}
+          className="border border-black text-black rounded px-2 py-1 text-sm"
+        >
+          <option value={10}>10 / page</option>
+          <option value={25}>25 / page</option>
+          <option value={50}>50 / page</option>
+        </select>
       </div>
     </div>
   );

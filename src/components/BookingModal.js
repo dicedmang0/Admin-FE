@@ -7,34 +7,45 @@ export default function BookingModal({ court, slot, dateISO, onClose, onCreated 
     name: "",
     email: "",
     phone: "",
-    status: "UNAVAILABLE", // default
+    status: "PENDING", // default
     notes: "",
   });
   const [loading, setLoading] = useState(false);
 
   async function handleSubmit(e) {
-    e.preventDefault();
-    try {
-      setLoading(true);
-      await apiPost("/admin/bookings", {
+  e.preventDefault();
+  try {
+    setLoading(true);
+
+    // Hitung tanggal & waktu mulai / akhir slot berdasarkan dateISO
+    const startAt = new Date(`${dateISO}T${slot.time}:00+07:00`);
+    const endAt = new Date(startAt.getTime() + 60 * 60 * 1000); // +1 jam
+
+    await apiPost(
+      "/admin/bookings",
+      {
         courtId: court.id,
-        startAt: slot.start, // dari slot
+        startAt,
+        endAt,
         status: form.status,
         name: form.name,
         email: form.email,
         phone: form.phone,
         notes: form.notes,
-      }, { auth: true });
+      },
+      { auth: true }
+    );
 
-      if (onCreated) onCreated();
-      onClose();
-    } catch (err) {
-      console.error("Failed to create booking:", err);
-      alert("Gagal membuat booking");
-    } finally {
-      setLoading(false);
-    }
+    if (onCreated) onCreated();
+    onClose();
+  } catch (err) {
+    console.error("Failed to create booking:", err);
+    alert("Gagal membuat booking");
+  } finally {
+    setLoading(false);
   }
+}
+
 
   return (
     <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
@@ -86,8 +97,8 @@ export default function BookingModal({ court, slot, dateISO, onClose, onCreated 
               onChange={(e) => setForm({ ...form, status: e.target.value })}
               className="w-full border text-black rounded-lg px-3 py-2"
             >
-              <option value="UNAVAILABLE">Unavailable</option>
-              <option value="BOOKED">Booked</option>
+              <option value="PENDING">Unavailable</option>
+              <option value="PAID">Booked</option>
               <option value="HOLD">Hold</option>
             </select>
           </div>

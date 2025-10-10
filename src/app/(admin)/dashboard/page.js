@@ -30,6 +30,16 @@ export default function DashboardPage() {
     DateTime.now().plus({ days: i - 3 }) // range ±3 hari
   );
 
+  const formatCurrency = (value) => {
+    if (isNaN(value)) return "-";
+    return new Intl.NumberFormat("id-ID", {
+      style: "currency",
+      currency: "IDR",
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0,
+    }).format(value);
+  };
+
   if (loading) return <div className="text-slate-600">Loading dashboard...</div>;
   if (!stats) return <div className="text-red-600">Gagal memuat data</div>;
 
@@ -39,30 +49,42 @@ export default function DashboardPage() {
       <div>
         <h1 className="text-2xl font-bold text-slate-800">Dashboard</h1>
         <p className="text-slate-500 text-sm">
-          Today’s overview – {DateTime.fromISO(selectedDate).toLocaleString(DateTime.DATE_FULL)}
+          Today’s overview –{" "}
+          {DateTime.fromISO(selectedDate).toLocaleString(DateTime.DATE_FULL)}
         </p>
       </div>
 
       {/* Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        {/* Total Available Slots */}
         <div className="bg-white rounded-xl shadow p-6">
-          <p className="text-sm text-slate-500">Total Courts</p>
-          <p className="text-2xl font-bold text-slate-800">{stats.courts}</p>
+          <p className="text-sm text-slate-500">Total Available Slots</p>
+          <p className="text-2xl font-bold text-slate-800">
+            {stats.availableSlots}
+          </p>
         </div>
+
+        {/* Total Bookings */}
         <div className="bg-white rounded-xl shadow p-6">
           <p className="text-sm text-slate-500">Total Bookings</p>
           <p className="text-2xl font-bold text-slate-800">{stats.bookings}</p>
         </div>
+
+        {/* Total Paid */}
         <div className="bg-white rounded-xl shadow p-6">
           <p className="text-sm text-slate-500">Total Paid</p>
-          <p className="text-2xl font-bold text-slate-800">${stats.paid}</p>
+          <p className="text-2xl font-bold text-slate-800">
+            {formatCurrency(stats.paid)}
+          </p>
         </div>
       </div>
 
       {/* Quick Date Navigation */}
       <div className="bg-white rounded-xl shadow p-6">
-        <p className="font-semibold text-slate-700 mb-4">Quick Date Navigation</p>
-        <div className="flex gap-2">
+        <p className="font-semibold text-slate-700 mb-4">
+          Quick Date Navigation
+        </p>
+        <div className="flex gap-2 flex-wrap">
           {weekDays.map((d) => {
             const iso = d.toFormat("yyyy-LL-dd");
             return (

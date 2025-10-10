@@ -1,4 +1,3 @@
-// src/lib/api.js
 import { authHeader } from "./auth";
 
 const API = process.env.NEXT_PUBLIC_API;
@@ -27,11 +26,13 @@ async function http(path, { method = "GET", body, headers, auth = false, cache =
 export const apiGet  = (path, opts = {}) => http(path, { ...opts, method: "GET" });
 export const apiPost = (path, body, opts = {}) => http(path, { ...opts, method: "POST", body });
 export const apiPut  = (path, body, opts = {}) => http(path, { ...opts, method: "PUT", body });
+export const apiPatch = (path, body, opts = {}) => http(path, { ...opts, method: "PATCH", body }); // ✅ tambahkan ini
 export const apiDel  = (path, opts = {}) => http(path, { ...opts, method: "DELETE" });
 
 // Admin endpoints (contoh)
 export const getDashboard = (date) =>
   apiGet(`/admin/dashboard${date ? `?date=${date}` : ""}`, { auth: true });
 
-
-export const getCourts    = () => apiGet("/admin/courts", { auth: true });
+export const getCourts = () => apiGet("/admin/courts", { auth: true });
+export const getBooking = () => apiGet("/admin/bookings", { auth: true });
+export const getSettings = () => apiGet("/admin/settings", { auth: true });

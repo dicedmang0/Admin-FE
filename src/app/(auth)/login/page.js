@@ -5,7 +5,7 @@ import { saveSession } from "@/lib/auth";
 import { useRouter } from "next/navigation";
 
 export default function LoginPage() {
-  const [email, setEmail] = useState("admin@lagunapadel.com".replace("padel","padel")); // placeholder
+  const [email, setEmail] = useState("admin@laguna-padel.com".replace("padel","padel")); // placeholder
   const [password, setPassword] = useState("");
   const [remember, setRemember] = useState(true);
   const [loading, setLoading] = useState(false);
@@ -13,30 +13,34 @@ export default function LoginPage() {
   const router = useRouter();
 
   async function handleSubmit(e) {
-    e.preventDefault();
-    setErr("");
-    setLoading(true);
-    try {
-      const out = await apiPost("/auth/login", { email, password });
-      // out: { access_token, role }
-      saveSession({ token: out.access_token, role: out.role, remember });
-      router.replace("/dashboard");
-    } catch (e) {
-      setErr(e.message || "Login failed");
-    } finally {
-      setLoading(false);
-    }
+  e.preventDefault();
+  setErr("");
+  setLoading(true);
+  try {
+    const out = await apiPost("/auth/login", { email, password });
+
+    // ✅ gunakan key admin_role & admin_token dari auth.js
+    saveSession({
+      token: out.access_token,
+      role: out.user.role, // ✅ ambil dari out.user.role
+      remember,
+    });
+
+    router.replace("/dashboard");
+  } catch (e) {
+    setErr(e.message || "Login failed");
+  } finally {
+    setLoading(false);
   }
+}
+
 
   return (
     <div className="min-h-screen w-full flex items-center justify-center" style={{ backgroundColor: "#6EABC6" }}>
       <div className="bg-white w-full max-w-md rounded-2xl shadow-soft p-6 md:p-8">
         <div className="w-12 h-12 mx-auto rounded-full grid place-items-center mb-3" style={{ background: "#E6F4F1" }}>
           {/* globe-ish icon */}
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
-            <circle cx="12" cy="12" r="10" stroke="#2d6a4f" strokeWidth="1.5"/>
-            <path d="M2 12h20M12 2c3 3.5 3 16 0 20M7 4c1.5 1.3 2.8 3.9 3 8-.2 4.1-1.5 6.7-3 8M17 4c-1.5 1.3-2.8 3.9-3 8 .2 4.1 1.5 6.7 3 8" stroke="#2d6a4f" strokeWidth="1.2"/>
-          </svg>
+          <img src="https://res.cloudinary.com/doy2qixs5/image/upload/v1758449892/laguna/logo/laguna-padel-yellow_avinuo.png" alt="laguna-padel-logo" />
         </div>
 
         <h1 className="text-center text-black text-2xl font-bold">Laguna Padel</h1>

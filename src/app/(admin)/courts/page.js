@@ -3,17 +3,22 @@ import { useState, useEffect } from "react";
 import MiniCalendarCard from "@/components/MiniCalendarCard";
 import Skeleton from "@/components/Skeleton";
 import { apiGet } from "@/lib/api";
-import BookingModal from "@/components/BookingModal"; // ⬅️ import modal
+import BookingModal from "@/components/BookingModal"; // modal existing
 
 export default function CourtsPage() {
   const [courts, setCourts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedSlot, setSelectedSlot] = useState(null);
+  const [selectedDate, setSelectedDate] = useState(
+    new Date().toISOString().slice(0, 10)
+  );
 
   async function load(dateISO) {
     try {
       setLoading(true);
-      const data = await apiGet(`/admin/courts?date=${dateISO}`, { auth: true });
+      const data = await apiGet(`/admin/courts?date=${dateISO}`, {
+        auth: true,
+      });
       setCourts(data);
     } catch (err) {
       console.error("Failed to load courts", err);
@@ -29,7 +34,12 @@ export default function CourtsPage() {
 
   return (
     <div className="space-y-6">
-      <MiniCalendarCard onDateSelect={load} />
+      <MiniCalendarCard
+        onDateSelect={(dateISO) => {
+          setSelectedDate(dateISO);
+          load(dateISO);
+        }}
+      />
 
       <div className="space-y-4">
         {loading ? (
@@ -63,7 +73,7 @@ export default function CourtsPage() {
                   <button
                     key={slot.id}
                     onClick={() => setSelectedSlot({ ...slot, court })}
-                    className={`p-2 rounded-lg text-center text-xs border
+                    className={`p-2 rounded-lg text-center text-xs border transition-all
                       ${
                         slot.state === "booked"
                           ? "bg-red-100 text-red-600 border-red-200"
@@ -74,7 +84,19 @@ export default function CourtsPage() {
                           : "bg-green-100 text-green-700 border-green-200 hover:bg-green-200"
                       }`}
                   >
-                    {slot.time} <br /> {slot.state}
+                    <div>{slot.time}</div>
+                    {slot.state === "booked" ? (
+                      <>
+                        <div className="font-semibold text-[10px]">
+                          {slot.bookingCode}
+                        </div>
+                        <div className="text-[10px] truncate">
+                          {slot.bookingName}
+                        </div>
+                      </>
+                    ) : (
+                      <div>{slot.state}</div>
+                    )}
                   </button>
                 ))}
               </div>
@@ -83,11 +105,12 @@ export default function CourtsPage() {
         )}
       </div>
 
-      {/* Render modal kalau ada slot dipilih */}
+      {/* Modal untuk detail slot */}
       {selectedSlot && (
         <BookingModal
           slot={selectedSlot}
           court={selectedSlot.court}
+          dateISO={selectedDate}
           onClose={() => setSelectedSlot(null)}
           onBooked={() => {
             const today = new Date().toISOString().slice(0, 10);
