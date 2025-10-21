@@ -28,7 +28,6 @@ export default function CampaignFormModal({ campaign, onClose, onSave }) {
               value={form.title}
               onChange={(e) => setForm({ ...form, title: e.target.value })}
               className="w-full border rounded-lg px-3 py-2"
-              required
             />
           </div>
 
@@ -38,7 +37,6 @@ export default function CampaignFormModal({ campaign, onClose, onSave }) {
               value={form.description}
               onChange={(e) => setForm({ ...form, description: e.target.value })}
               className="w-full border rounded-lg px-3 py-2 h-24"
-              required
             />
           </div>
 
