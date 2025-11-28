@@ -32,6 +32,10 @@ export const apiDel  = (path, opts = {}) => http(path, { ...opts, method: "DELET
 // Admin endpoints (contoh)
 export const getDashboard = (date) =>
   apiGet(`/admin/dashboard${date ? `?date=${date}` : ""}`, { auth: true });
+export const getDiscounts = () => apiGet("/admin/discounts", { auth: true });
+export const createDiscount = (payload) => apiPost("/admin/discounts", payload, { auth: true });
+export const updateDiscount = (id, payload) => apiPatch(`/admin/discounts/${id}`, payload, { auth: true });
+export const deleteDiscount = (id) => apiDel(`/admin/discounts/${id}`, { auth: true });
 
 export const getCourts = () => apiGet("/admin/courts", { auth: true });
 export const getBooking = () => apiGet("/admin/bookings", { auth: true });

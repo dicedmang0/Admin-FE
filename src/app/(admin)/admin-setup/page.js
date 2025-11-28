@@ -2,6 +2,7 @@
 import AdminCampaignsTable from "@/components/AdminCampaignsTable";
 import AdminUsersTable from "@/components/AdminUsersTable";
 import SystemSettingsForm from "@/components/SystemSettingsForm";
+import AdminDiscountsTable from "@/components/AdminDiscountsTable";
 
 export default function AdminSetupPage() {
   return (
@@ -16,7 +17,7 @@ export default function AdminSetupPage() {
 
       {/* System Settings Section */}
       <SystemSettingsForm />
-
+      <AdminDiscountsTable />
       <AdminCampaignsTable/>
     </div>
   );
