@@ -1,40 +1,46 @@
 "use client";
 import { useState, useEffect } from "react";
-import MiniCalendarCard from "@/components/MiniCalendarCard";
+import ThreeMonthCalendarCard from "@/components/ThreeMonthCalendarCard";
 import Skeleton from "@/components/Skeleton";
-import { apiGet } from "@/lib/api";
-import BookingModal from "@/components/BookingModal"; // modal existing
+import BookingModal from "@/components/BookingModal";
+import { getCourtsByDate } from "@/lib/api"; // ✅ pakai helper baru
 
 export default function CourtsPage() {
   const [courts, setCourts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedSlot, setSelectedSlot] = useState(null);
-  const [selectedDate, setSelectedDate] = useState(
-    new Date().toISOString().slice(0, 10)
-  );
+
+  const [selectedDate, setSelectedDate] = useState(() => {
+    const now = new Date();
+    // pakai ISO tanggal lokal (admin view), cukup
+    return new Date(now.getFullYear(), now.getMonth(), now.getDate())
+      .toISOString()
+      .slice(0, 10);
+  });
 
   async function load(dateISO) {
     try {
       setLoading(true);
-      const data = await apiGet(`/admin/courts?date=${dateISO}`, {
-        auth: true,
-      });
-      setCourts(data);
+      const data = await getCourtsByDate(dateISO);
+      setCourts(Array.isArray(data) ? data : []);
     } catch (err) {
       console.error("Failed to load courts", err);
+      setCourts([]);
     } finally {
       setLoading(false);
     }
   }
 
   useEffect(() => {
-    const today = new Date().toISOString().slice(0, 10);
-    load(today);
+    load(selectedDate);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   return (
     <div className="space-y-6">
-      <MiniCalendarCard
+      {/* ✅ replace calendar */}
+      <ThreeMonthCalendarCard
+        value={selectedDate}
         onDateSelect={(dateISO) => {
           setSelectedDate(dateISO);
           load(dateISO);
@@ -69,43 +75,47 @@ export default function CourtsPage() {
               </h2>
 
               <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-2 mt-4">
-                {court.slots.map((slot) => (
-                  <button
-                    key={slot.id}
-                    onClick={() => setSelectedSlot({ ...slot, court })}
-                    className={`p-2 rounded-lg text-center text-xs border transition-all
-                      ${
-                        slot.state === "booked"
-                          ? "bg-red-100 text-red-600 border-red-200"
-                          : slot.state === "hold"
-                          ? "bg-yellow-100 text-yellow-700 border-yellow-200"
-                          : slot.state === "unavailable"
-                          ? "bg-gray-100 text-gray-500 border-gray-200"
-                          : "bg-green-100 text-green-700 border-green-200 hover:bg-green-200"
-                      }`}
-                  >
-                    <div>{slot.time}</div>
-                    {slot.state === "booked" ? (
-                      <>
-                        <div className="font-semibold text-[10px]">
-                          {slot.bookingCode}
-                        </div>
-                        <div className="text-[10px] truncate">
-                          {slot.bookingName}
-                        </div>
-                      </>
-                    ) : (
-                      <div>{slot.state}</div>
-                    )}
-                  </button>
-                ))}
+                {court.slots.map((slot) => {
+                  const state = slot.state || "available";
+
+                  const cls =
+                    state === "booked"
+                      ? "bg-red-100 text-red-600 border-red-200"
+                      : state === "hold"
+                      ? "bg-yellow-100 text-yellow-700 border-yellow-200"
+                      : state === "unavailable"
+                      ? "bg-gray-100 text-gray-500 border-gray-200"
+                      : "bg-green-100 text-green-700 border-green-200 hover:bg-green-200";
+
+                  return (
+                    <button
+                      key={slot.id}
+                      onClick={() => setSelectedSlot({ ...slot, court })}
+                      className={`p-2 rounded-lg text-center text-xs border transition-all ${cls}`}
+                    >
+                      <div>{slot.time}</div>
+                      {state === "booked" ? (
+                        <>
+                          <div className="font-semibold text-[10px]">
+                            {slot.bookingCode}
+                          </div>
+                          <div className="text-[10px] truncate">
+                            {slot.bookingName}
+                          </div>
+                        </>
+                      ) : (
+                        <div>{state}</div>
+                      )}
+                    </button>
+                  );
+                })}
               </div>
             </div>
           ))
         )}
       </div>
 
-      {/* Modal untuk detail slot */}
+      {/* Modal detail slot */}
       {selectedSlot && (
         <BookingModal
           slot={selectedSlot}
@@ -113,8 +123,8 @@ export default function CourtsPage() {
           dateISO={selectedDate}
           onClose={() => setSelectedSlot(null)}
           onBooked={() => {
-            const today = new Date().toISOString().slice(0, 10);
-            load(today);
+            // ✅ reload tanggal yang sedang dipilih
+            load(selectedDate);
           }}
         />
       )}

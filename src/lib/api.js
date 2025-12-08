@@ -40,3 +40,14 @@ export const deleteDiscount = (id) => apiDel(`/admin/discounts/${id}`, { auth: t
 export const getCourts = () => apiGet("/admin/courts", { auth: true });
 export const getBooking = () => apiGet("/admin/bookings", { auth: true });
 export const getSettings = () => apiGet("/admin/settings", { auth: true });
+export const getCourtsByDate = (dateISO) =>
+  apiGet(`/admin/courts${dateISO ? `?date=${encodeURIComponent(dateISO)}` : ""}`, {
+    auth: true,
+  });
+
+// ✅ Calendar summary range (untuk 3 bulan date picker)
+export const getCourtsCalendarSummary = ({ start, end }) =>
+  apiGet(
+    `/admin/courts/calendar-summary?start=${encodeURIComponent(start)}&end=${encodeURIComponent(end)}`,
+    { auth: true }
+  );
