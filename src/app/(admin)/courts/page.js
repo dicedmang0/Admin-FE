@@ -3,7 +3,7 @@ import { useState, useEffect } from "react";
 import ThreeMonthCalendarCard from "@/components/ThreeMonthCalendarCard";
 import Skeleton from "@/components/Skeleton";
 import BookingModal from "@/components/BookingModal";
-import { getCourtsByDate } from "@/lib/api"; // ✅ pakai helper baru
+import { getCourtsByDate } from "@/lib/api"; // ✅ helper baru
 
 export default function CourtsPage() {
   const [courts, setCourts] = useState([]);
@@ -12,7 +12,7 @@ export default function CourtsPage() {
 
   const [selectedDate, setSelectedDate] = useState(() => {
     const now = new Date();
-    // pakai ISO tanggal lokal (admin view), cukup
+    // pakai ISO tanggal lokal (admin view)
     return new Date(now.getFullYear(), now.getMonth(), now.getDate())
       .toISOString()
       .slice(0, 10);
@@ -38,7 +38,7 @@ export default function CourtsPage() {
 
   return (
     <div className="space-y-6">
-      {/* ✅ replace calendar */}
+      {/* Calendar overview 3 bulan */}
       <ThreeMonthCalendarCard
         value={selectedDate}
         onDateSelect={(dateISO) => {
@@ -47,6 +47,7 @@ export default function CourtsPage() {
         }}
       />
 
+      {/* Daftar court & slot */}
       <div className="space-y-4">
         {loading ? (
           <>
@@ -115,15 +116,15 @@ export default function CourtsPage() {
         )}
       </div>
 
-      {/* Modal detail slot */}
+      {/* Modal create / manage booking manual */}
       {selectedSlot && (
         <BookingModal
           slot={selectedSlot}
           court={selectedSlot.court}
           dateISO={selectedDate}
           onClose={() => setSelectedSlot(null)}
-          onBooked={() => {
-            // ✅ reload tanggal yang sedang dipilih
+          onCreated={() => {
+            // reload tanggal yang sedang dipilih
             load(selectedDate);
           }}
         />

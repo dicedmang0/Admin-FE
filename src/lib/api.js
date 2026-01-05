@@ -44,7 +44,8 @@ export const getCourtsByDate = (dateISO) =>
   apiGet(`/admin/courts${dateISO ? `?date=${encodeURIComponent(dateISO)}` : ""}`, {
     auth: true,
   });
-
+export const getBookingDetail = (id) =>
+  apiGet(`/admin/bookings/${id}`, { auth: true });
 // ✅ Calendar summary range (untuk 3 bulan date picker)
 export const getCourtsCalendarSummary = ({ start, end }) =>
   apiGet(

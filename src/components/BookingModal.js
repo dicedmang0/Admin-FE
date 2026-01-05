@@ -1,137 +1,211 @@
 "use client";
-import { useState } from "react";
-import { apiPost } from "@/lib/api";
+import { useState, useEffect } from "react";
+import { apiPost, apiPatch, getBookingDetail } from "@/lib/api";
 
-export default function BookingModal({ court, slot, dateISO, onClose, onCreated }) {
+export default function BookingModal({
+  court,
+  slot,
+  dateISO,
+  onClose,
+  onBooked,
+}) {
   const [form, setForm] = useState({
     name: "",
     email: "",
     phone: "",
-    status: "PENDING", // default
+    status: "PENDING", // default = Unavailable
     notes: "",
   });
   const [loading, setLoading] = useState(false);
+  const [prefillLoading, setPrefillLoading] = useState(false);
+
+  // 🔄 Prefill kalau slot sudah booked
+  useEffect(() => {
+    async function prefill() {
+      if (!slot || slot.state !== "booked" || !slot.bookingId) return;
+
+      try {
+        setPrefillLoading(true);
+        const data = await getBookingDetail(slot.bookingId);
+
+        setForm({
+          name: data?.name || "",
+          email: data?.email || "",
+          phone: data?.whatsapp || "",
+          status: data?.status || "PENDING",
+          notes: data?.note || "",
+        });
+      } catch (err) {
+        console.error("Failed to fetch booking detail for prefill", err);
+      } finally {
+        setPrefillLoading(false);
+      }
+    }
+
+    prefill();
+  }, [slot]);
 
   async function handleSubmit(e) {
-  e.preventDefault();
-  try {
+    e.preventDefault();
     setLoading(true);
 
-    // Hitung tanggal & waktu mulai / akhir slot berdasarkan dateISO
-    const startAt = new Date(`${dateISO}T${slot.time}:00+07:00`);
-    const endAt = new Date(startAt.getTime() + 60 * 60 * 1000); // +1 jam
+    try {
+      const isBookedSlot = slot.state === "booked";
+      const wantsCancel = form.status === "CANCELLED";
 
-    await apiPost(
-      "/admin/bookings",
-      {
-        courtId: court.id,
-        startAt,
-        endAt,
-        status: form.status,
-        name: form.name,
-        email: form.email,
-        phone: form.phone,
-        notes: form.notes,
-      },
-      { auth: true }
-    );
+      // CASE 1: slot sudah booked + admin pilih "Cancelled" → PATCH cancel
+      if (isBookedSlot && wantsCancel && slot.bookingId) {
+        await apiPatch(
+          `/admin/bookings/${slot.bookingId}/cancel`,
+          {},
+          { auth: true }
+        );
+      } else {
+        // CASE 2: semua kasus lain → buat booking manual baru
 
-    if (onCreated) onCreated();
-    onClose();
-  } catch (err) {
-    console.error("Failed to create booking:", err);
-    alert("Gagal membuat booking");
-  } finally {
-    setLoading(false);
+        const startAtLocal = `${dateISO}T${slot.time}:00+07:00`;
+        const startAt = new Date(startAtLocal);
+
+        await apiPost(
+          "/admin/bookings",
+          {
+            courtId: court.id,
+            startAt, // BE hitung endAt & dateISO sendiri
+            status: form.status,
+            name: form.name,
+            email: form.email,
+            phone: form.phone,
+            note: form.notes,
+          },
+          { auth: true }
+        );
+      }
+
+      if (onBooked) onBooked();
+      onClose();
+    } catch (err) {
+      console.error("Failed to submit booking", err);
+      alert(err?.message || "Gagal menyimpan booking");
+    } finally {
+      setLoading(false);
+    }
   }
-}
 
+  const isEditingBooked = slot.state === "booked";
 
   return (
     <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
       <div className="bg-white rounded-xl shadow-lg w-full max-w-lg p-6">
-        <h2 className="text-lg  text-black font-semibold mb-4">
+        <h2 className="text-lg text-black font-semibold mb-4">
           Booking – {court.name} ({slot.time})
         </h2>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          {/* Customer Info */}
-          <div>
-            <label className="block text-sm  text-black font-medium mb-1">Name</label>
-            <input
-              type="text"
-              value={form.name}
-              onChange={(e) => setForm({ ...form, name: e.target.value })}
-              required
-              className="w-full border text-black rounded-lg px-3 py-2"
-            />
-          </div>
-          <div className="grid grid-cols-2 gap-4">
+        {prefillLoading ? (
+          <p className="text-sm text-slate-500">Loading booking data…</p>
+        ) : (
+          <form onSubmit={handleSubmit} className="space-y-4">
+            {/* Customer Info */}
             <div>
-              <label className="block text-sm  text-black font-medium mb-1">Email</label>
-              <input
-                type="email"
-                value={form.email}
-                onChange={(e) => setForm({ ...form, email: e.target.value })}
-                required
-                className="w-full border text-black rounded-lg px-3 py-2"
-              />
-            </div>
-            <div>
-              <label className="block text-sm  text-black font-medium mb-1">Phone</label>
+              <label className="block text-sm text-black font-medium mb-1">
+                Name
+              </label>
               <input
                 type="text"
-                value={form.phone}
-                onChange={(e) => setForm({ ...form, phone: e.target.value })}
+                value={form.name}
+                onChange={(e) => setForm({ ...form, name: e.target.value })}
                 required
                 className="w-full border text-black rounded-lg px-3 py-2"
               />
             </div>
-          </div>
 
-          {/* Status */}
-          <div>
-            <label className="block text-sm  text-black font-medium mb-1">Booking Status</label>
-            <select
-              value={form.status}
-              onChange={(e) => setForm({ ...form, status: e.target.value })}
-              className="w-full border text-black rounded-lg px-3 py-2"
-            >
-              <option value="PENDING">Unavailable</option>
-              <option value="PAID">Booked</option>
-              <option value="HOLD">Hold</option>
-            </select>
-          </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm text-black font-medium mb-1">
+                  Email
+                </label>
+                <input
+                  type="email"
+                  value={form.email}
+                  onChange={(e) =>
+                    setForm({ ...form, email: e.target.value })
+                  }
+                  required
+                  className="w-full border text-black rounded-lg px-3 py-2"
+                />
+              </div>
+              <div>
+                <label className="block text-sm text-black font-medium mb-1">
+                  Phone
+                </label>
+                <input
+                  type="text"
+                  value={form.phone}
+                  onChange={(e) =>
+                    setForm({ ...form, phone: e.target.value })
+                  }
+                  required
+                  className="w-full border text-black rounded-lg px-3 py-2"
+                />
+              </div>
+            </div>
 
-          {/* Notes */}
-          <div>
-            <label className="block text-sm  text-black font-medium mb-1">Notes</label>
-            <textarea
-              value={form.notes}
-              onChange={(e) => setForm({ ...form, notes: e.target.value })}
-              className="w-full border  text-black rounded-lg px-3 py-2"
-              rows={3}
-            />
-          </div>
+            {/* Status */}
+            <div>
+              <label className="block text-sm text-black font-medium mb-1">
+                Booking Status
+              </label>
+              <select
+                value={form.status}
+                onChange={(e) =>
+                  setForm({ ...form, status: e.target.value })
+                }
+                className="w-full border text-black rounded-lg px-3 py-2"
+              >
+                <option value="PENDING">Unavailable</option>
+                <option value="PAID">Booked</option>
+                <option value="HOLD">Hold</option>
+                <option value="CANCELLED">Cancelled (Free slot)</option>
+              </select>
+            </div>
 
-          {/* Actions */}
-          <div className="flex justify-end gap-2 pt-2">
-            <button
-              type="button"
-              onClick={onClose}
-              className="px-4 py-2 rounded-lg border text-slate-600 hover:bg-slate-100"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              disabled={loading}
-              className="px-4 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50"
-            >
-              {loading ? "Saving..." : "Create Booking"}
-            </button>
-          </div>
-        </form>
+            {/* Notes */}
+            <div>
+              <label className="block text-sm text-black font-medium mb-1">
+                Notes
+              </label>
+              <textarea
+                value={form.notes}
+                onChange={(e) =>
+                  setForm({ ...form, notes: e.target.value })
+                }
+                className="w-full border text-black rounded-lg px-3 py-2"
+                rows={3}
+              />
+            </div>
+
+            {/* Actions */}
+            <div className="flex justify-end gap-2 pt-2">
+              <button
+                type="button"
+                onClick={onClose}
+                className="px-4 py-2 rounded-lg border text-slate-600 hover:bg-slate-100"
+              >
+                Close
+              </button>
+              <button
+                type="submit"
+                disabled={loading}
+                className="px-4 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50"
+              >
+                {loading
+                  ? "Saving..."
+                  : isEditingBooked
+                  ? "Save / Cancel Booking"
+                  : "Create Booking"}
+              </button>
+            </div>
+          </form>
+        )}
       </div>
     </div>
   );
