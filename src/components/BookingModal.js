@@ -114,7 +114,106 @@ export default function BookingModal({
           <p className="text-sm text-slate-500">Loading booking data…</p>
         ) : (
           <form onSubmit={handleSubmit} className="space-y-4">
-            {/* ... (isi form sama seperti sebelumnya) ... */}
+            {/* Customer Info */}
+            <div>
+              <label className="block text-sm text-black font-medium mb-1">
+                Name
+              </label>
+              <input
+                type="text"
+                value={form.name}
+                onChange={(e) => setForm({ ...form, name: e.target.value })}
+                required
+                className="w-full border text-black rounded-lg px-3 py-2"
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm text-black font-medium mb-1">
+                  Email
+                </label>
+                <input
+                  type="email"
+                  value={form.email}
+                  onChange={(e) =>
+                    setForm({ ...form, email: e.target.value })
+                  }
+                  required
+                  className="w-full border text-black rounded-lg px-3 py-2"
+                />
+              </div>
+              <div>
+                <label className="block text-sm text-black font-medium mb-1">
+                  Phone
+                </label>
+                <input
+                  type="text"
+                  value={form.phone}
+                  onChange={(e) =>
+                    setForm({ ...form, phone: e.target.value })
+                  }
+                  required
+                  className="w-full border text-black rounded-lg px-3 py-2"
+                />
+              </div>
+            </div>
+
+            {/* Status */}
+            <div>
+              <label className="block text-sm text-black font-medium mb-1">
+                Booking Status
+              </label>
+              <select
+                value={form.status}
+                onChange={(e) =>
+                  setForm({ ...form, status: e.target.value })
+                }
+                className="w-full border text-black rounded-lg px-3 py-2"
+              >
+                <option value="PENDING">Unavailable</option>
+                <option value="PAID">Booked</option>
+                <option value="HOLD">Hold</option>
+                <option value="CANCELLED">Cancelled (Free slot)</option>
+              </select>
+            </div>
+
+            {/* Notes */}
+            <div>
+              <label className="block text-sm text-black font-medium mb-1">
+                Notes
+              </label>
+              <textarea
+                value={form.notes}
+                onChange={(e) =>
+                  setForm({ ...form, notes: e.target.value })
+                }
+                className="w-full border text-black rounded-lg px-3 py-2"
+                rows={3}
+              />
+            </div>
+
+            {/* Actions */}
+            <div className="flex justify-end gap-2 pt-2">
+              <button
+                type="button"
+                onClick={onClose}
+                className="px-4 py-2 rounded-lg border text-slate-600 hover:bg-slate-100"
+              >
+                Close
+              </button>
+              <button
+                type="submit"
+                disabled={loading}
+                className="px-4 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50"
+              >
+                {loading
+                  ? "Saving..."
+                  : isEditingBooked
+                  ? "Save / Cancel Booking"
+                  : "Create Booking"}
+              </button>
+            </div>
           </form>
         )}
       </div>
