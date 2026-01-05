@@ -174,7 +174,7 @@ export default function BookingModal({
                 <option value="PENDING">Unavailable</option>
                 <option value="PAID">Booked</option>
                 <option value="HOLD">Hold</option>
-                <option value="CANCELLED">Cancelled (Free slot)</option>
+                <option value="CANCELLED">Cancel (Free slot)</option>
               </select>
             </div>
 
