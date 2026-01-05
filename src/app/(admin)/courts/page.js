@@ -127,6 +127,7 @@ export default function CourtsPage() {
             // reload tanggal yang sedang dipilih
             load(selectedDate);
           }}
+          onBooked={() => load(selectedDate)}
         />
       )}
     </div>
